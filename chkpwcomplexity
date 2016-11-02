@@ -1,0 +1,97 @@
+#!/usr/bin/perl
+
+# GoSA password complexity checker
+# Revision 1 by Sean Caron (scaron@umich.edu) 4/14/2011
+# Revision 2 by Sean Caron (scaron@umich.edu) 10/1/2014 (adapt for GoSA v2.7)
+
+# Major changes to keep up with GoSA v2.7:
+# (1) We need to change input handling from taking command line arguments, to taking an LDIF
+# (2) We need to specify language="en_US" in main default section of /etc/gosa/gosa.conf
+# (3) We can no longer return anything but 0, otherwise we will get an error, 
+#     "Cannot execute command for plugin..."
+# (4) To enable this, all we need to do is make sure password:self has a check parameter, like:
+#     <plugin acl="users/password:self" class="password" check="/usr/share/gosa/scripts/chkpwcomplexity" />
+
+# Path to dictionary for password checking
+$dict = "/usr/share/dict/american-english";
+
+# In GoSA v2.7 the arguments now come to us in the form of an LDIF via stdin
+# The LDIF will look like:
+#     dn: uid=testuser,ou=People,dc=csg,dc=sph,dc=umich,dc=edu
+#     current_password: currentpassword
+#     new_password: newpassword
+
+while (<>) {
+	($key, $value) = split ": ";
+
+	if ($key eq "new_password") {
+		$pw = $value;
+	}
+}
+
+# Password complexity score
+$score = 0;
+
+# Removed check to see if the password contains the account name, since we would have to parse that
+# out of a fully specified LDAP DN now.
+
+# Check that the password is of appropriate length
+
+if ( length($pw) < 10 ) {
+	print "The password must be 10 characters or longer.\n";
+	exit 0;
+}
+
+# Check that the password is not in the dictionary
+
+open DICT, $dict or die "Failed to open dictionary";
+
+while ( $word = <DICT> ) {
+        chomp($word);
+
+        if ( length($word) > 4) {
+                if ( $pw =~ m/$word/ ) {
+                        print "The password must not contain a dictionary word.\n";
+                        close DICT;
+                        exit 0;
+                }
+        }
+}
+
+close DICT;
+
+# Check that the password contains uppercase
+
+if ( $pw =~ m/[A-Z]/ ) {
+	$score = $score + 1;
+}
+
+# Check that the password contains lowercase
+
+if ( $pw =~ m/[a-z]/ ) {
+	$score = $score + 1;
+}
+
+# Check that the password contains numeric
+
+if ( $pw =~ m/[0-9]/ ) {
+	$score = $score + 1;
+}
+
+# Check that the password contains special character
+
+if ( ($pw =~ m/[^0-9a-zA-z]/) || ($pw =~ m/_/) ) {
+	$score = $score + 1;
+}
+
+# See if the complexity score is high enough
+
+if ( $score < 3 ) {
+	print "The password must contain three of the following: uppercase letters, lowercase letters, numerals and punctuation.\n";
+	exit 0;
+}
+
+# If we have not yet exited with an error message, the checks were successful.
+# Sending any error message to STDOUT will implicitly abort the password change.
+
+exit 0;
