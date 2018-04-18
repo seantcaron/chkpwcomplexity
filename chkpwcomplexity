@@ -22,11 +22,11 @@ $dict = "/usr/share/dict/american-english";
 #     new_password: newpassword
 
 while (<>) {
-	($key, $value) = split ": ";
+    ($key, $value) = split ": ";
 
-	if ($key eq "new_password") {
-		$pw = $value;
-	}
+    if ($key eq "new_password") {
+        $pw = $value;
+    }
 }
 
 # Password complexity score
@@ -37,61 +37,55 @@ $score = 0;
 
 # Check that the password is of appropriate length
 
-if ( length($pw) < 10 ) {
-	print "The password must be 10 characters or longer.\n";
-	exit 0;
+if (length($pw) < 10) {
+    print "The password must be 10 characters or longer.\n";
+    exit 0;
 }
 
 # Check that the password is not in the dictionary
 
 open DICT, $dict or die "Failed to open dictionary";
 
-while ( $word = <DICT> ) {
-        chomp($word);
+while ($word = <DICT>) {
+    chomp($word);
 
-        if ( length($word) > 4) {
-                if ( $pw =~ m/$word/ ) {
-                        print "The password must not contain a dictionary word.\n";
-                        close DICT;
-                        exit 0;
-                }
+    if (length($word) > 4) {
+        if ($pw =~ m/$word/) {
+            print "The password must not contain a dictionary word.\n";
+            close DICT;
+            exit 0;
         }
+    }
 }
 
 close DICT;
 
 # Check that the password contains uppercase
-
-if ( $pw =~ m/[A-Z]/ ) {
-	$score = $score + 1;
+if ($pw =~ m/[A-Z]/) {
+    $score = $score + 1;
 }
 
 # Check that the password contains lowercase
-
-if ( $pw =~ m/[a-z]/ ) {
-	$score = $score + 1;
+if ($pw =~ m/[a-z]/) {
+    $score = $score + 1;
 }
 
 # Check that the password contains numeric
-
-if ( $pw =~ m/[0-9]/ ) {
-	$score = $score + 1;
+if ($pw =~ m/[0-9]/) {
+    $score = $score + 1;
 }
 
 # Check that the password contains special character
-
-if ( ($pw =~ m/[^0-9a-zA-z]/) || ($pw =~ m/_/) ) {
-	$score = $score + 1;
+if (($pw =~ m/[^0-9a-zA-z]/) || ($pw =~ m/_/)) {
+    $score = $score + 1;
 }
 
 # See if the complexity score is high enough
-
-if ( $score < 3 ) {
-	print "The password must contain three of the following: uppercase letters, lowercase letters, numerals and punctuation.\n";
-	exit 0;
+if ($score < 3) {
+    print "The password must contain three of the following: uppercase letters, lowercase letters, numerals and punctuation.\n";
+    exit 0;
 }
 
 # If we have not yet exited with an error message, the checks were successful.
 # Sending any error message to STDOUT will implicitly abort the password change.
-
 exit 0;
