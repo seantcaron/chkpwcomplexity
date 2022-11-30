@@ -29,7 +29,7 @@ use REST::Client;
 use Digest::SHA1  qw(sha1 sha1_hex sha1_base64);
 
 # Path to dictionary for password checking
-$dict = "/usr/share/dict/american-english";
+my $dict = "/usr/share/dict/american-english";
 
 #
 # In GoSA v2.7 the arguments now come to us in the form of an LDIF via stdin
@@ -54,13 +54,13 @@ while (<>) {
 }
 
 # Password complexity score
-$score = 0;
+my $score = 0;
 
 # Check that the password does not contain the user name in question
 
 if ($pw =~ m/$uid/) {
-        print "The password must not contain the user name\n";
-        exit 1;
+    print "The password must not contain the user name\n";
+    exit 1;
 }
 
 # Check that the password is of appropriate length
@@ -88,8 +88,8 @@ close DICT;
 
 # Check that the password is not in the compromised passwords database
 my $pw_hash = uc sha1_hex($pw);
-$pw_hash_prefix = substr($pw_hash, 0, 5);
-$pw_hash_suffix = substr($pw_hash, 5);
+my $pw_hash_prefix = substr($pw_hash, 0, 5);
+my $pw_hash_suffix = substr($pw_hash, 5);
 
 my $client = REST::Client->new();
 $client->GET("https://api.pwnedpasswords.com/range/$pw_hash_prefix");
