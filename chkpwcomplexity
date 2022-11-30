@@ -2,14 +2,17 @@
 
 #
 # GoSA password complexity checker
+#
 # Revision 1 by Sean Caron (scaron@umich.edu) 4/14/2011
-# Revision 2 by Sean Caron (scaron@umich.edu) 10/1/2014 
+# Revision 2 by Sean Caron (scaron@umich.edu) 10/1/2014
 #   - Adapt for GoSA v2.7
 # Revision 3 by Sean Caron (scaron@umich.edu) 5/31/2017
 #   - Increase required password length to 12 characters
 # Revision 4 by Sean Caron (scaron@umich.edu) 11/28/2022
 #   - Increase required password length to 15 characters
 #   - Parse user name from LDIF and add back check for passwords containing user name
+# Revision 5 by Sean Caron (scaron@umich.edu) 11/30/2022
+#   - Check password against compromised passwords database using haveibeenpwned.com API
 #
 
 #
@@ -21,6 +24,9 @@
 # (4) To enable this, all we need to do is make sure password:self has a check parameter, like:
 #     <plugin acl="users/password:self" class="password" check="/usr/share/gosa/scripts/chkpwcomplexity" />
 #
+
+use REST::Client;
+use Digest::SHA1  qw(sha1 sha1_hex sha1_base64);
 
 # Path to dictionary for password checking
 $dict = "/usr/share/dict/american-english";
@@ -52,13 +58,13 @@ $score = 0;
 
 # Check that the password does not contain the user name in question
 
-if ( $pw =~ m/$uid/ ) {
+if ($pw =~ m/$uid/) {
         print "The password must not contain the user name\n";
         exit 1;
 }
 
 # Check that the password is of appropriate length
-if ( length($pw) < 15 ) {
+if (length($pw) < 15) {
     print "The password must be 15 characters or longer.\n";
     exit 0;
 }
@@ -66,10 +72,10 @@ if ( length($pw) < 15 ) {
 # Check that the password is not in the dictionary
 open DICT, $dict or die "Failed to open dictionary";
 
-while ( $word = <DICT> ) {
+while ($word = <DICT>) {
     chomp($word);
 
-    if ( length($word) > 4) {
+    if (length($word) > 4) {
         if ( $pw =~ m/$word/ ) {
             print "The password must not contain a dictionary word.\n";
             close DICT;
@@ -80,28 +86,42 @@ while ( $word = <DICT> ) {
 
 close DICT;
 
+# Check that the password is not in the compromised passwords database
+my $pw_hash = uc sha1_hex($pw);
+$pw_hash_prefix = substr($pw_hash, 0, 5);
+$pw_hash_suffix = substr($pw_hash, 5);
+
+my $client = REST::Client->new();
+$client->GET("https://api.pwnedpasswords.com/range/$pw_hash_prefix");
+my $result = $client->responseContent();
+
+if ($result =~ m/$pw_hash_suffix/) {
+    print "The password was found in a list of compromised passwords. Please select another password.\n";
+    exit 0;
+}
+
 # Check that the password contains uppercase
-if ( $pw =~ m/[A-Z]/ ) {
+if ($pw =~ m/[A-Z]/) {
     $score = $score + 1;
 }
 
 # Check that the password contains lowercase
-if ( $pw =~ m/[a-z]/ ) {
+if ($pw =~ m/[a-z]/) {
     $score = $score + 1;
 }
 
 # Check that the password contains numeric
-if ( $pw =~ m/[0-9]/ ) {
+if ($pw =~ m/[0-9]/) {
     $score = $score + 1;
 }
 
 # Check that the password contains special character
-if ( ($pw =~ m/[^0-9a-zA-z]/) || ($pw =~ m/_/) ) {
+if (($pw =~ m/[^0-9a-zA-z]/) || ($pw =~ m/_/)) {
     $score = $score + 1;
 }
 
 # See if the complexity score is high enough
-if ( $score < 3 ) {
+if ($score < 3) {
     print "The password must contain three of the following: uppercase letters, lowercase letters, numerals and punctuation.\n";
     exit 0;
 }
